@@ -7,11 +7,11 @@
 
 #define PLUGIN_NAME				"Survivor Chat Select"
 #define PLUGIN_AUTHOR			"Lyseria Editor"
-#define PLUGIN_DESCRIPTION		"Fix add return."
+#define PLUGIN_DESCRIPTION		"Fix add return funtion. Remove zoey unlock."
 #define PLUGIN_VERSION			""
 #define PLUGIN_URL				""
 
-#define GAMEDATA				"a_survivor_chat_select"
+#define GAMEDATA				"l4d2_survivor_chat_select"
 
 #define DEBUG					0
 
@@ -153,7 +153,7 @@ public void OnPluginStart() {
 	g_cAdminFlags.AddChangeHook(CvarChanged);
 	g_cInTransition.AddChangeHook(CvarChanged);
 
-	AutoExecConfig(true,"a_survivor_chat_select");
+	AutoExecConfig(true,"l4d2_survivor_chat_select");
 
 	TopMenu topmenu;
 	if (LibraryExists("adminmenu") && ((topmenu = GetAdminTopMenu())))
