@@ -23,6 +23,20 @@
 
 		"Addresses"
 		{
+			"CDirector"
+			{
+				"linux"
+				{
+					"signature"	"TheDirector"
+				}
+				"windows"
+				{
+					"signature"	"CDirectorMusicBanks::OnRoundStart"
+					"read"		"12"
+				}
+				"read"	"0"
+			}
+
 			"SavedPlayersCount"
 			{
 				"linux"
@@ -54,39 +68,48 @@
 
 		"Signatures"
 		{
-			/*Giữ vũ khí người chơi qua màn*/
+			"TheDirector"
+			{
+				"library"	"server"
+				"linux"		"@TheDirector"
+			}
+
+			"CDirectorMusicBanks::OnRoundStart"
+			{
+				"library"	"server"
+				"windows"	"\x2A\x2A\x2A\x2A\x2A\x2A\x56\x57\x8B\x2A\x8B\x0D\x2A\x2A\x2A\x2A\xE8\x2A\x2A\x2A\x2A\x84\x2A\x0F"
+			}
+
+			"CTerrorGameRules::GetMissionInfo"
+			{
+				"library"	"server"
+				"linux"		"@_ZN16CTerrorGameRules14GetMissionInfoEv"
+				"windows"	"\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x8B\x2A\x8B\x2A\x2A\x56\xFF\x2A\x8B\x2A\x8B\x2A\x8B\x2A\x2A\x6A\x2A\xFF\x2A\x8B\x2A\x85\x2A\x75\x2A\x5E"
+			}
 			"CTerrorPlayer::TransitionRestore"
 			{
 				"library"	"server"
 				"linux"		"@_ZN13CTerrorPlayer17TransitionRestoreEv"
 				"windows"	"\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x80\xBE\x2A\x2A\x2A\x2A\x2A\x75\x2A\x33\x2A\x5E\x8B\x2A\x5D\xC3"
 			}
-
-			/*Giữ vũ khí của Bot qua màn*/
 			"RestoreTransitionedSurvivorBots"
 			{
 				"library"	"server"
 				"linux"		"@_Z31RestoreTransitionedSurvivorBotsv"
 				"windows"	"\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x83\x2A\x2A\x85\x2A\x0F\x84\x2A\x2A\x2A\x2A\x53\x56\x57\x50\x68"
 			}
-
-			/*Check vũ khí*/
 			"CDirector::IsInTransition"
 			{
 				"library"	"server"
 				"linux"		"@_ZNK9CDirector14IsInTransitionEv"
 				"windows"	"\x80\x3D\x2A\x2A\x2A\x2A\x00\x75\x2A\x80\xB9\x8C\x02\x00\x00\x00"
 			}
-
-			/*Tìm kiếm giá trị*/
 			"KeyValues::GetInt"
 			{
 				"library"	"server"
 				"linux"		"@_ZN9KeyValues6GetIntEPKci"
 				"windows"	"\x2A\x2A\x2A\x2A\x2A\x2A\x6A\x2A\x50\xE8\x2A\x2A\x2A\x2A\x85\x2A\x74\x2A\x0F\x2A\x2A\x2A\x49"
 			}
-
-			/*Giữ map duy trì tránh crash*/
 			"InfoChangelevel::ChangeLevelNow"
 			{
 				"library"	"server"

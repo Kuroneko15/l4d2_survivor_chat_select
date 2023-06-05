@@ -3,7 +3,7 @@
 #include <sourcemod>
 #include <adminmenu>
 #include <dhooks>
-#include <left4dhooks>
+#include <sdkhooks>
 
 #define PLUGIN_NAME				"Survivor Chat Select"
 #define PLUGIN_AUTHOR			"Lyseria Editor"
@@ -25,6 +25,7 @@
 #define	 LOUIS					7, 7
 
 Handle
+	g_hSDK_CTerrorGameRules_GetMissionInfo,
 	g_hSDK_CDirector_IsInTransition,
 	g_hSDK_KeyValues_GetInt;
 
@@ -134,7 +135,7 @@ public void OnPluginStart() {
 	RegConsoleCmd("sm_b",			cmdBillUse,		"Changes your survivor character into Bill");
 	RegConsoleCmd("sm_f",			cmdBikerUse,	"Changes your survivor character into Francis");
 	RegConsoleCmd("sm_l",			cmdLouisUse,	"Changes your survivor character into Louis");
-
+	
 	RegConsoleCmd("sm_csm",			cmdCsm,			"Brings up a menu to select a client's character");
 	RegConsoleCmd("sm_nhanvat",			cmdCsm,			"Brings up a menu to select a client's character");
 	RegConsoleCmd("sm_doinhanvat",			cmdCsm,			"Brings up a menu to select a client's character");
@@ -142,10 +143,10 @@ public void OnPluginStart() {
 	RegAdminCmd("sm_csc",			cmdCsc,			ADMFLAG_ROOT, "Brings up a menu to select a client's character");
 	RegAdminCmd("sm_setleast",		cmdSetLeast,	ADMFLAG_ROOT, "Set the survivor model to least the survivor bot");
 
-	g_cAutoModel =			CreateConVar("l4d_scs_auto_model",		"0",	"Chuyển đổi mô hình khớp với 8 người?", FCVAR_NOTIFY);
+	g_cAutoModel =			CreateConVar("l4d_scs_auto_model",		"1",	"Chuyển đổi mô hình khớp với 8 người?", FCVAR_NOTIFY);
 	g_cTabHUDBar =			CreateConVar("l4d_scs_tab_hud_bar",		"0",	"Tab sẽ hiển thị nhân vật? \n0=Mặc định, 1=L4D1, 2=L4D2, 3=Cả hai.", FCVAR_NOTIFY);
 	g_cAdminFlags =			CreateConVar("l4d_csm_admin_flags",		"",	"Những ai được sử dụng trong game?\n z=Chỉ sử dụng cho admin, để trống tất cả đều sử dụng", FCVAR_NOTIFY);
-	g_cInTransition =		CreateConVar("l4d_csm_in_transition",	"1",	"Giữ nguyên mặc định, đặt thành 0 nếu xung đột.", FCVAR_NOTIFY);
+	g_cInTransition =		CreateConVar("l4d_csm_in_transition",	"1",	"Chuyển đổi mô hình khi qua màn, đặt thành 0 nếu xung đột với plugin giữ vũ khí qua màn.", FCVAR_NOTIFY);
 	g_cPrecacheAllSur =		FindConVar("precache_all_survivors");
 
 	g_cAutoModel.AddChangeHook(CvarChanged);
@@ -153,7 +154,7 @@ public void OnPluginStart() {
 	g_cAdminFlags.AddChangeHook(CvarChanged);
 	g_cInTransition.AddChangeHook(CvarChanged);
 
-	AutoExecConfig(true,"l4d2_survivor_chat_select");
+	AutoExecConfig(true, "l4d2_survivor_chat_select");
 
 	TopMenu topmenu;
 	if (LibraryExists("adminmenu") && ((topmenu = GetAdminTopMenu())))
@@ -161,10 +162,6 @@ public void OnPluginStart() {
 
 	for (int i; i < sizeof g_sSurModels; i++)
 		g_smSurModels.SetValue(g_sSurModels[i], i);
-}
-
-public void OnAllPluginsLoaded() {
-	g_pDirector = L4D_GetPointer(POINTER_DIRECTOR);
 }
 
 public void OnAdminMenuReady(Handle topmenu) {
@@ -204,7 +201,7 @@ Action cmdCsc(int client, int args) {
 	char info[12];
 	char disp[MAX_NAME_LENGTH];
 	Menu menu = new Menu(Csc_MenuHandler);
-	menu.SetTitle("Target player:");
+	menu.SetTitle("Choose Your Character:");
 
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsClientInGame(i) || GetClientTeam(i) != 2)
@@ -245,7 +242,7 @@ char[] GetModelName(int client) {
 			idx = 8;
 	}
 
-	strcopy(model, sizeof model, idx == 8 ? "unknown" : g_sSurNames[idx]);
+	strcopy(model, sizeof model, idx == 8 ? "未知" : g_sSurNames[idx]);
 	return model;
 }
 
@@ -263,7 +260,7 @@ int Csc_MenuHandler(Menu menu, MenuAction action, int client, int param2) {
 			if (param2 == MenuCancel_ExitBack && g_TopMenu != null)
 				g_TopMenu.Display(client, TopMenuPosition_LastCategory);
 		}
-	
+
 		case MenuAction_End:
 			delete menu;
 	}
@@ -294,7 +291,7 @@ int ShowMenuAdmin_MenuHandler(Menu menu, MenuAction action, int client, int para
 			if (param2 >= 0 && param2 <= 7)
 				SetCharacter(GetClientOfUserId(g_iSelectedClient[client]), param2, param2);
 		}
-	
+
 		case MenuAction_End:
 			delete menu;
 	}
@@ -303,7 +300,7 @@ int ShowMenuAdmin_MenuHandler(Menu menu, MenuAction action, int client, int para
 }
 
 Action cmdCsm(int client, int args) {
-	if (!CanUse(client)) 
+	if (!CanUse(client))
 		return Plugin_Handled;
 
 	Menu menu = new Menu(Csm_MenuHandler);
@@ -366,6 +363,32 @@ bool CanUse(int client, bool checkAdmin = true) {
 	if (IsPinned(client)) {
 		ReplyToCommand(client, "This command cannot be used when controlled.");
 		return false;
+	}
+
+	return true;
+}
+
+stock bool L4D_IsPlayerStaggering(int client)
+{
+	static int m_iQueuedStaggerType = -1;
+	if( m_iQueuedStaggerType == -1 )
+	m_iQueuedStaggerType = FindSendPropInfo("CTerrorPlayer", "m_staggerDist") + 4;
+
+	if( GetEntData(client, m_iQueuedStaggerType, 4) == -1 )
+	{
+		if( GetGameTime() >= GetEntPropFloat(client, Prop_Send, "m_staggerTimer", 1) )
+		{
+			return false;
+		}
+
+		static float vStgDist[3], vOrigin[3];
+		GetEntPropVector(client, Prop_Send, "m_staggerStart", vStgDist);
+		GetEntPropVector(client, Prop_Send, "m_vecOrigin", vOrigin);
+
+		static float fStgDist2;
+		fStgDist2 = GetEntPropFloat(client, Prop_Send, "m_staggerDist");
+
+		return GetVectorDistance(vStgDist, vOrigin) <= fStgDist2;
 	}
 
 	return true;
@@ -467,7 +490,7 @@ Action cmdZoeyUse(int client, int args) {
 Action cmdNickUse(int client, int args) {
 	if (!CanUse(client))
 		return Plugin_Handled;
-	
+
 	SetCharacter(client, NICK);
 	return Plugin_Handled;
 }
@@ -475,7 +498,7 @@ Action cmdNickUse(int client, int args) {
 Action cmdEllisUse(int client, int args) {
 	if (!CanUse(client))
 		return Plugin_Handled;
-	
+
 	SetCharacter(client, ELLIS);
 	return Plugin_Handled;
 }
@@ -483,7 +506,7 @@ Action cmdEllisUse(int client, int args) {
 Action cmdCoachUse(int client, int args) {
 	if (!CanUse(client))
 		return Plugin_Handled;
-	
+
 	SetCharacter(client, COACH);
 	return Plugin_Handled;
 }
@@ -491,7 +514,7 @@ Action cmdCoachUse(int client, int args) {
 Action cmdRochelleUse(int client, int args) {
 	if (!CanUse(client))
 		return Plugin_Handled;
-	
+
 	SetCharacter(client, ROCHELLE);
 	return Plugin_Handled;
 }
@@ -499,7 +522,7 @@ Action cmdRochelleUse(int client, int args) {
 Action cmdBillUse(int client, int args) {
 	if (!CanUse(client))
 		return Plugin_Handled;
-	
+
 	SetCharacter(client, BILL);
 	return Plugin_Handled;
 }
@@ -507,7 +530,7 @@ Action cmdBillUse(int client, int args) {
 Action cmdBikerUse(int client, int args) {
 	if (!CanUse(client))
 		return Plugin_Handled;
-	
+
 	SetCharacter(client, FRANCIS);
 	return Plugin_Handled;
 }
@@ -515,7 +538,7 @@ Action cmdBikerUse(int client, int args) {
 Action cmdLouisUse(int client, int args) {
 	if (!CanUse(client))
 		return Plugin_Handled;
-	
+
 	SetCharacter(client, LOUIS);
 	return Plugin_Handled;
 }
@@ -539,11 +562,13 @@ public void OnMapStart() {
 	g_cPrecacheAllSur.IntValue = 1;
 	for (int i; i < sizeof g_sSurModels; i++)
 		PrecacheModel(g_sSurModels[i], true);
+	Address pMissionInfo = SDKCall(g_hSDK_CTerrorGameRules_GetMissionInfo);
+	if (pMissionInfo)
+		g_iOrignalSet = SDKCall(g_hSDK_KeyValues_GetInt, pMissionInfo, "survivor_set", 2);
 }
 
 public void OnConfigsExecuted() {
 	GetCvars();
-	g_iOrignalSet = L4D2_GetSurvivorSetMap();
 }
 
 void CvarChanged(ConVar convar, const char[] oldValue, const char[] newValue) {
@@ -583,7 +608,7 @@ void Toggle(bool enable) {
 	}
 	else if (enabled && !enable) {
 		enabled = false;
-		
+
 		UnhookEvent("round_start",			Event_RoundStart,			EventHookMode_PostNoCopy);
 		UnhookEvent("player_bot_replace",	Event_PlayerBotReplace,		EventHookMode_Pre);
 		UnhookEvent("bot_player_replace",	Event_BotPlayerReplace,		EventHookMode_Pre);
@@ -908,7 +933,7 @@ void ReEquipWeapons(int client) {
 		switch (i) {
 			case 0: {
 				GetEntityClassname(weapon, cls, sizeof cls);
-	
+
 				int clip1 = GetEntProp(weapon, Prop_Send, "m_iClip1");
 				int ammo = GetOrSetPlayerAmmo(client, weapon);
 				int upgrade = GetEntProp(weapon, Prop_Send, "m_upgradeBitVec");
@@ -928,7 +953,7 @@ void ReEquipWeapons(int client) {
 
 					if (upgradeAmmo > 0)
 						SetEntProp(weapon, Prop_Send, "m_nUpgradedPrimaryAmmoLoaded", upgradeAmmo);
-			
+
 					if (weaponSkin > 0)
 						SetEntProp(weapon, Prop_Send, "m_nSkin", weaponSkin);
 				}
@@ -974,7 +999,7 @@ void ReEquipWeapons(int client) {
 				if (weapon > MaxClients) {
 					if (clip1 != -1)
 						SetEntProp(weapon, Prop_Send, "m_iClip1", clip1);
-				
+
 					if (weaponSkin > 0)
 						SetEntProp(weapon, Prop_Send, "m_nSkin", weaponSkin);
 				}
@@ -1011,6 +1036,10 @@ void InitGameData() {
 	if (!hGameData)
 		SetFailState("Failed to load \"%s.txt\" gamedata.", GAMEDATA);
 
+	g_pDirector = hGameData.GetAddress("CDirector");
+	if (!g_pDirector)
+		SetFailState("Failed to find address: \"CDirector\"");
+
 	g_pSavedPlayersCount = hGameData.GetAddress("SavedPlayersCount");
 	if (!g_pSavedPlayersCount)
 		SetFailState("Failed to find address: \"SavedPlayersCount\"");
@@ -1018,6 +1047,13 @@ void InitGameData() {
 	g_pSavedSurvivorBotsCount = hGameData.GetAddress("SavedSurvivorBotsCount");
 	if (!g_pSavedSurvivorBotsCount)
 		SetFailState("Failed to find address: \"SavedSurvivorBotsCount\"");
+
+	StartPrepSDKCall(SDKCall_Static);
+	if (!PrepSDKCall_SetFromConf(hGameData, SDKConf_Signature, "CTerrorGameRules::GetMissionInfo"))
+		SetFailState("Failed to find signature: \"CTerrorGameRules::GetMissionInfo\"");
+	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
+	if (!(g_hSDK_CTerrorGameRules_GetMissionInfo = EndPrepSDKCall()))
+		SetFailState("Failed to create SDKCall: \"CTerrorGameRules::GetMissionInfo\"");
 
 	StartPrepSDKCall(SDKCall_Raw);
 	if (!PrepSDKCall_SetFromConf(hGameData, SDKConf_Signature, "CDirector::IsInTransition"))
@@ -1140,7 +1176,7 @@ bool IsTransitioning(int userid) {
 
 		if (SDKCall(g_hSDK_KeyValues_GetInt, ptr, "userID", 0) != userid)
 			continue;
-	
+
 		if (SDKCall(g_hSDK_KeyValues_GetInt, ptr, "teamNumber", 0) != 2)
 			continue;
 
