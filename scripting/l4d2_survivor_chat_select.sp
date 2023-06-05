@@ -146,7 +146,7 @@ public void OnPluginStart() {
 	g_cAutoModel =			CreateConVar("l4d_scs_auto_model",		"1",	"Chuyển đổi mô hình khớp với 8 người?", FCVAR_NOTIFY);
 	g_cTabHUDBar =			CreateConVar("l4d_scs_tab_hud_bar",		"0",	"Tab sẽ hiển thị nhân vật? \n0=Mặc định, 1=L4D1, 2=L4D2, 3=Cả hai.", FCVAR_NOTIFY);
 	g_cAdminFlags =			CreateConVar("l4d_csm_admin_flags",		"",	"Những ai được sử dụng trong game?\n z=Chỉ sử dụng cho admin, để trống tất cả đều sử dụng", FCVAR_NOTIFY);
-	g_cInTransition =		CreateConVar("l4d_csm_in_transition",	"1",	"Chuyển đổi mô hình khi qua màn, đặt thành 0 nếu xung đột với plugin giữ vũ khí qua màn.", FCVAR_NOTIFY);
+	g_cInTransition =		CreateConVar("l4d_csm_in_transition",	"0",	"Chuyển đổi mô hình khi qua màn, đặt thành 0 nếu xung đột với plugin giữ vũ khí qua màn.", FCVAR_NOTIFY);
 	g_cPrecacheAllSur =		FindConVar("precache_all_survivors");
 
 	g_cAutoModel.AddChangeHook(CvarChanged);
