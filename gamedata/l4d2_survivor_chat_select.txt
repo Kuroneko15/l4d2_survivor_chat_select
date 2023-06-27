@@ -92,6 +92,7 @@
 				"linux"		"@_ZN13CTerrorPlayer17TransitionRestoreEv"
 				"windows"	"\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x80\xBE\x2A\x2A\x2A\x2A\x2A\x75\x2A\x33\x2A\x5E\x8B\x2A\x5D\xC3"
 			}
+
 			"RestoreTransitionedSurvivorBots"
 			{
 				"library"	"server"

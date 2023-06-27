@@ -5,12 +5,6 @@
 #include <dhooks>
 #include <sdkhooks>
 
-#define PLUGIN_NAME				"Survivor Chat Select"
-#define PLUGIN_AUTHOR			"Lyseria Editor"
-#define PLUGIN_DESCRIPTION		"Fix add return funtion. Remove zoey unlock."
-#define PLUGIN_VERSION			""
-#define PLUGIN_URL				""
-
 #define GAMEDATA				"l4d2_survivor_chat_select"
 
 #define DEBUG					0
@@ -59,6 +53,7 @@ int
 	g_iSelectedClient[MAXPLAYERS + 1];
 
 bool
+	g_bLateLoad,
 	g_bAutoModel,
 	g_bTransition,
 	g_bTransitioned,
@@ -105,15 +100,27 @@ methodmap CPlayerResource {
 	}
 }
 
-public Plugin myinfo = {
-	name = PLUGIN_NAME,
-	author = PLUGIN_AUTHOR,
-	description = PLUGIN_DESCRIPTION,
-	version = PLUGIN_VERSION,
-	url = PLUGIN_URL
+public Plugin myinfo =
+{
+	name = "l4d2_survivor_chat_seclect",
+	author = "Lyseria Editor",
+	description = "Extra syntax, small fix",
+	version = "1.1",
+	url = "https://forums.alliedmods.net/showpost.php?p=2738850&postcount=831"
 };
 
-public void OnPluginStart() {
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
+	if (GetEngineVersion() != Engine_Left4Dead2) {
+		strcopy(error, err_max, "Plugin only supports Left 4 Dead 2.");
+		return APLRes_SilentFailure;
+	}
+
+	g_bLateLoad = late;
+	return APLRes_Success;
+}
+
+public void OnPluginStart()
+{
 	InitGameData();
 	g_smSurModels = new StringMap();
 	HookUserMessage(GetUserMessageId("SayText2"), umSayText2, true);
@@ -135,18 +142,18 @@ public void OnPluginStart() {
 	RegConsoleCmd("sm_b",			cmdBillUse,		"Changes your survivor character into Bill");
 	RegConsoleCmd("sm_f",			cmdBikerUse,	"Changes your survivor character into Francis");
 	RegConsoleCmd("sm_l",			cmdLouisUse,	"Changes your survivor character into Louis");
-	
+
 	RegConsoleCmd("sm_csm",			cmdCsm,			"Brings up a menu to select a client's character");
 	RegConsoleCmd("sm_nhanvat",			cmdCsm,			"Brings up a menu to select a client's character");
 	RegConsoleCmd("sm_doinhanvat",			cmdCsm,			"Brings up a menu to select a client's character");
 
 	RegAdminCmd("sm_csc",			cmdCsc,			ADMFLAG_ROOT, "Brings up a menu to select a client's character");
-	RegAdminCmd("sm_setleast",		cmdSetLeast,	ADMFLAG_ROOT, "Set the survivor model to least the survivor bot");
+	RegAdminCmd("sm_setbot",		cmdSetLeast,	ADMFLAG_ROOT, "Set the survivor model to least the survivor bot");
 
-	g_cAutoModel =			CreateConVar("l4d_scs_auto_model",		"1",	"Chuyển đổi mô hình khớp với 8 người?", FCVAR_NOTIFY);
-	g_cTabHUDBar =			CreateConVar("l4d_scs_tab_hud_bar",		"0",	"Tab sẽ hiển thị nhân vật? \n0=Mặc định, 1=L4D1, 2=L4D2, 3=Cả hai.", FCVAR_NOTIFY);
-	g_cAdminFlags =			CreateConVar("l4d_csm_admin_flags",		"",	"Những ai được sử dụng trong game?\n z=Chỉ sử dụng cho admin, để trống tất cả đều sử dụng", FCVAR_NOTIFY);
-	g_cInTransition =		CreateConVar("l4d_csm_in_transition",	"0",	"Chuyển đổi mô hình khi qua màn, đặt thành 0 nếu xung đột với plugin giữ vũ khí qua màn.", FCVAR_NOTIFY);
+	g_cAutoModel =			CreateConVar("l4d_scs_auto_model",		"1",	"Auto switch to least 8 player different character model?", FCVAR_NOTIFY);
+	g_cTabHUDBar =			CreateConVar("l4d_scs_tab_hud_bar",		"1",	"Tab bar will show which character team? (Recommend keep default setting)\n0=Default, 1=L4D1, 2=L4D2, 3=According to the map.", FCVAR_NOTIFY);
+	g_cAdminFlags =			CreateConVar("l4d_csm_admin_flags",		"",		"Who does the command work for?/n z=Only work for Admin, Empty=All player", FCVAR_NOTIFY);
+	g_cInTransition =		CreateConVar("l4d_csm_in_transition",	"1",	"Disable for transitioning players when 8 player auto model is enabled?", FCVAR_NOTIFY);
 	g_cPrecacheAllSur =		FindConVar("precache_all_survivors");
 
 	g_cAutoModel.AddChangeHook(CvarChanged);
@@ -160,8 +167,28 @@ public void OnPluginStart() {
 	if (LibraryExists("adminmenu") && ((topmenu = GetAdminTopMenu())))
 		OnAdminMenuReady(topmenu);
 
+	if (g_bLateLoad)
+	{
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (IsClientInGame(i))
+				OnClientPutInServer(i);
+		}
+	}
 	for (int i; i < sizeof g_sSurModels; i++)
 		g_smSurModels.SetValue(g_sSurModels[i], i);
+}
+
+public void OnClientPutInServer(int client)
+{
+	SDKHook(client, SDKHook_PostThinkPost, Hook_OnPostThinkPost);
+}
+
+void Hook_OnPostThinkPost(int client) {
+	if (!IsPlayerAlive(client) || GetClientTeam(client) != 2) 
+		return;
+
+	VoiceModel(client);
 }
 
 public void OnAdminMenuReady(Handle topmenu) {
@@ -201,7 +228,7 @@ Action cmdCsc(int client, int args) {
 	char info[12];
 	char disp[MAX_NAME_LENGTH];
 	Menu menu = new Menu(Csc_MenuHandler);
-	menu.SetTitle("Choose Your Character:");
+	menu.SetTitle("Choose Your Player Character:");
 
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsClientInGame(i) || GetClientTeam(i) != 2)
@@ -217,6 +244,37 @@ Action cmdCsc(int client, int args) {
 	return Plugin_Handled;
 }
 
+void VoiceModel(int client) {
+	static char model[31];
+	GetClientModel(client, model, sizeof model);
+	switch(model[29]) {
+		case 'c'://coach
+			CoachVoice(client);
+
+		case 'b'://nick
+			NickVoice(client);
+
+		case 'd'://rochelle
+			RochelleVoice(client);
+
+		case 'h'://ellis
+			EllisVoice(client);
+
+		case 'v'://bill
+			BillVoice(client);
+
+		case 'n'://zoey
+			ZoeyVoice(client);
+
+		case 'e'://francis
+			FrancisVoice(client);
+
+		case 'a'://louis
+			LouisVoice(client);
+	}
+}
+
+
 char[] GetModelName(int client) {
 	int idx;
 	char model[31];
@@ -224,25 +282,33 @@ char[] GetModelName(int client) {
 	switch (model[29]) {
 		case 'b'://nick
 			idx = 0;
-		case 'd'://rochelle
+
+		case 'd'://rochelle		
 			idx = 1;
+
 		case 'c'://coach
 			idx = 2;
+			
 		case 'h'://ellis
 			idx = 3;
+			
 		case 'v'://bill
 			idx = 4;
+			
 		case 'n'://zoey
 			idx = 5;
+			
 		case 'e'://francis
 			idx = 6;
+			
 		case 'a'://louis
 			idx = 7;
+			
 		default:
 			idx = 8;
 	}
 
-	strcopy(model, sizeof model, idx == 8 ? "未知" : g_sSurNames[idx]);
+	strcopy(model, sizeof model, idx == 8 ? "unknown" : g_sSurNames[idx]);
 	return model;
 }
 
@@ -270,7 +336,7 @@ int Csc_MenuHandler(Menu menu, MenuAction action, int client, int param2) {
 
 void ShowMenuAdmin(int client) {
 	Menu menu = new Menu(ShowMenuAdmin_MenuHandler);
-	menu.SetTitle("Choose Your Character:");
+	menu.SetTitle("Choose your character: Admin");
 
 	menu.AddItem("0", "Nick");
 	menu.AddItem("1", "Rochelle");
@@ -304,7 +370,7 @@ Action cmdCsm(int client, int args) {
 		return Plugin_Handled;
 
 	Menu menu = new Menu(Csm_MenuHandler);
-	menu.SetTitle("Choose Your Character:");
+	menu.SetTitle("Change your character to:");
 
 	menu.AddItem("0", "Nick");
 	menu.AddItem("1", "Rochelle");
@@ -341,7 +407,7 @@ bool CanUse(int client, bool checkAdmin = true) {
 	}
 
 	if (checkAdmin && !CheckCommandAccess(client, "", g_iAdminFlags)) {
-		ReplyToCommand(client, "Only administrators can use this menu.");
+		ReplyToCommand(client, "Only administrators can use this command.");
 		return false;
 	}
 
@@ -361,7 +427,7 @@ bool CanUse(int client, bool checkAdmin = true) {
 	}
 
 	if (IsPinned(client)) {
-		ReplyToCommand(client, "This command cannot be used when controlled.");
+		ReplyToCommand(client, "This command cannot be used when oppressive.");
 		return false;
 	}
 
@@ -394,67 +460,77 @@ stock bool L4D_IsPlayerStaggering(int client)
 	return true;
 }
 
+
 bool IsGettingUp(int client) {
 	char model[31];
 	GetClientModel(client, model, sizeof model);
 	switch (model[29]) {
-		case 'b': {	//nick
+		case 'b':
+		{
 			switch (GetEntProp(client, Prop_Send, "m_nSequence")) {
 				case 680, 667, 671, 672, 630, 620, 627:
 					return true;
 			}
 		}
 
-		case 'd': {	//rochelle
+		case 'd':
+		{
 			switch (GetEntProp(client, Prop_Send, "m_nSequence")) {
 				case 687, 679, 678, 674, 638, 635, 629:
 					return true;
 			}
 		}
 
-		case 'c': {	//coach
+		case 'c':
+		{
 			switch (GetEntProp(client, Prop_Send, "m_nSequence")) {
 				case 669, 661, 660, 656, 630, 627, 621:
 					return true;
 			}
 		}
 
-		case 'h': {	//ellis
+		case 'h':
+		{
 			switch (GetEntProp(client, Prop_Send, "m_nSequence")) {
 				case 684, 676, 675, 671, 625, 635, 632:
 					return true;
 			}
 		}
 
-		case 'v': {	//bill
+		case 'v':
+		{
 			switch (GetEntProp(client, Prop_Send, "m_nSequence")) {
 				case 772, 764, 763, 759, 538, 535, 528:
 					return true;
 			}
 		}
 
-		case 'n': {	//zoey
+		case 'n':
+		{
 			switch (GetEntProp(client, Prop_Send, "m_nSequence")) {
 				case 824, 823, 819, 809, 547, 544, 537:
 					return true;
 			}
 		}
 
-		case 'e': {	//francis
+		case 'e':
+		{
 			switch (GetEntProp(client, Prop_Send, "m_nSequence")) {
 				case 775, 767, 766, 762, 541, 539, 531:
 					return true;
 			}
 		}
 
-		case 'a': {	//louis
+		case 'a':
+		{
 			switch (GetEntProp(client, Prop_Send, "m_nSequence")) {
 				case 772, 764, 763, 759, 538, 535, 528:
 					return true;
 			}
 		}
 
-		case 'w': {	//adawong
+		case 'w':
+		{
 			switch (GetEntProp(client, Prop_Send, "m_nSequence")) {
 				case 687, 679, 678, 674, 638, 635, 629:
 					return true;
@@ -559,16 +635,69 @@ Action umSayText2(UserMsg msg_id, BfRead msg, const int[] players, int playersNu
 }
 
 public void OnMapStart() {
+	GetSurvivorSetMap();
 	g_cPrecacheAllSur.IntValue = 1;
 	for (int i; i < sizeof g_sSurModels; i++)
 		PrecacheModel(g_sSurModels[i], true);
-	Address pMissionInfo = SDKCall(g_hSDK_CTerrorGameRules_GetMissionInfo);
-	if (pMissionInfo)
-		g_iOrignalSet = SDKCall(g_hSDK_KeyValues_GetInt, pMissionInfo, "survivor_set", 2);
 }
+
+int GetSurvivorSetMap() {
+	Address pMissionInfo = SDKCall(g_hSDK_CTerrorGameRules_GetMissionInfo);
+	g_iOrignalSet = pMissionInfo ? SDKCall(g_hSDK_KeyValues_GetInt, pMissionInfo, "survivor_set", 2) : 0;
+	return g_iOrignalSet;
+}
+
 
 public void OnConfigsExecuted() {
 	GetCvars();
+}
+
+void BillVoice(int client) {
+	SetVariantString("who:NamVet:0");
+	DispatchKeyValue(client, "targetname", "NamVet");
+	AcceptEntityInput(client, "AddContext");
+}
+
+void ZoeyVoice(int client) {
+	SetVariantString("who:TeenGirl:0");
+	DispatchKeyValue(client, "targetname", "TeenGirl");
+	AcceptEntityInput(client, "AddContext");
+}
+
+void LouisVoice(int client) {
+	SetVariantString("who:Manager:0");
+	DispatchKeyValue(client, "targetname", "Manager");
+	AcceptEntityInput(client, "AddContext");
+}
+
+void FrancisVoice(int client) {
+	SetVariantString("who:Biker:0");
+	DispatchKeyValue(client, "targetname", "Biker");
+	AcceptEntityInput(client, "AddContext");
+}
+
+void NickVoice(int client) {
+	SetVariantString("who:Gambler:0");
+	DispatchKeyValue(client, "targetname", "Gambler");
+	AcceptEntityInput(client, "AddContext");
+}
+
+void RochelleVoice(int client) {
+	SetVariantString("who:Producer:0");
+	DispatchKeyValue(client, "targetname", "Producer");
+	AcceptEntityInput(client, "AddContext");
+}
+
+void CoachVoice(int client) {
+	SetVariantString("who:Coach:0");
+	DispatchKeyValue(client, "targetname", "Coach");
+	AcceptEntityInput(client, "AddContext");
+}
+
+void EllisVoice(int client) {
+	SetVariantString("who:Mechanic:0");
+	DispatchKeyValue(client, "targetname", "Mechanic");
+	AcceptEntityInput(client, "AddContext");
 }
 
 void CvarChanged(ConVar convar, const char[] oldValue, const char[] newValue) {
@@ -841,7 +970,7 @@ int GetLeastCharacter(int client) {
 			least[buf]++;
 	}
 
-	switch (g_iOrignalSet) {
+	switch ((g_iOrignalSet > 0 || GetSurvivorSetMap() > 0) ? g_iOrignalSet : 2) {
 		case 1: {
 			buf = 7;
 			int tempChar = least[7];
@@ -869,7 +998,7 @@ int GetLeastCharacter(int client) {
 }
 
 void SetCharacterInfo(int client, int character, int modelIndex) {
-	if (g_iTabHUDBar && g_iTabHUDBar & g_iOrignalSet)
+	if (g_iTabHUDBar && g_iTabHUDBar & ((g_iOrignalSet > 0 || GetSurvivorSetMap() > 0) ? g_iOrignalSet : 2))
 		character = ConvertToInternalCharacter(character);
 
 	#if DEBUG
