@@ -1,7 +1,8 @@
 Onigrinal Plugin: https://forums.alliedmods.net/showpost.php?p=2738850&postcount=831 </br>
 > Báo cáo xung đột:
-	- [l4d2_vocalizebasedmodel](https://github.com/fbef0102/L4D2-Plugins/tree/master/l4d2_vocalizebasedmodel)</br>
-> Changelog update:
+	- [l4d2_vocalizebasedmodel](https://github.com/fbef0102/L4D2-Plugins/tree/master/l4d2_vocalizebasedmodel).</br>
+
+Changelog update:
 * Update 27 - 6 - 2023
 	- Compile Dev Build 1.12 Ver 7028.
 	- Thêm funtion GetSurvivorSetMap của left4hooks 1.33.
