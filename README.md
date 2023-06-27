@@ -13,7 +13,7 @@ Changelog update:
 	- Thay đổi left4hooks về lại sdkhooks cũ.
 	- Thêm sửa lỗi khi add bot bị ăn choáng.
 * Update 20 - 5 - 2023
- 	- Add return funtion.</br>
-	- Add new syntax.</br>
-	- Add gamedata.</br>
-	- Remote Chat Notifly when change character.
+ 	- Thêm biến return trả về giá trị.</br>
+	- Thêm kiểu code mới.</br>
+	- Thêm gamedata giảm crash.</br>
+	- Bỏ thông báo nhân vật khi thay đổi.
