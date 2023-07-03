@@ -105,7 +105,7 @@ public Plugin myinfo =
 	name = "l4d2_survivor_chat_seclect",
 	author = "Lyseria Editor",
 	description = "Extra syntax, small fix",
-	version = "1.1",
+	version = "2.4",
 	url = "https://forums.alliedmods.net/showpost.php?p=2738850&postcount=831"
 };
 
