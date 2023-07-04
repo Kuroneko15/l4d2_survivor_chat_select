@@ -151,7 +151,7 @@ public void OnPluginStart()
 	RegAdminCmd("sm_setbot",		cmdSetLeast,	ADMFLAG_ROOT, "Set the survivor model to least the survivor bot");
 
 	g_cAutoModel =			CreateConVar("l4d_scs_auto_model",		"1",	"Auto switch to least 8 player different character model?", FCVAR_NOTIFY);
-	g_cTabHUDBar =			CreateConVar("l4d_scs_tab_hud_bar",		"1",	"Tab bar will show which character team? (Recommend keep default setting)\n0=Default, 1=L4D1, 2=L4D2, 3=According to the map.", FCVAR_NOTIFY);
+	g_cTabHUDBar =			CreateConVar("l4d_scs_tab_hud_bar",		"0",	"Tab bar will show which character team? (Recommend keep default setting)\n0=Map default, 1=L4D1, 2=L4D2, 3=Change voice keep arm.", FCVAR_NOTIFY);
 	g_cAdminFlags =			CreateConVar("l4d_csm_admin_flags",		"",		"Who does the command work for?/n z=Only work for Admin, Empty=All player", FCVAR_NOTIFY);
 	g_cInTransition =		CreateConVar("l4d_csm_in_transition",	"1",	"Disable for transitioning players when 8 player auto model is enabled?", FCVAR_NOTIFY);
 	g_cPrecacheAllSur =		FindConVar("precache_all_survivors");
